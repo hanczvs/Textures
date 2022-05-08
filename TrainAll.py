@@ -5,7 +5,8 @@ from keras.layers import Dense, Flatten, Reshape
 from keras.layers import (Conv2D,Dense,Dropout,Flatten,MaxPooling2D)
 import random
 import numpy as np
-from main import getTest,getTrain
+from preprocess import getTest,getTrain
+from encoders import label_encoder_pass
 
 class VAE(tf.keras.Model):
     def __init__(self, input_size, latent_size=25):
@@ -93,6 +94,28 @@ def CNN(x):# this part will be sourced out to the CNNs
     model.add(Dense(25, activation='softmax')) #should we use a softmax here??
     return model(x)
 
+def one_hot(labels, class_size):
+    """
+    Create one hot label matrix of size (N, C)
+
+    Inputs:
+    - labels: Labels Tensor of shape (N,) representing a ground-truth label
+    for each MNIST image
+    - class_size: Scalar representing of target classes our dataset 
+    Returns:
+    - targets: One-hot label matrix of (N, C), where targets[i, j] = 1 when 
+    the ground truth label for image i is j, and targets[i, :j] & 
+    targets[i, j + 1:] are equal to 0
+    """
+    targets = np.zeros((labels.shape[0], class_size))
+    for i, label in enumerate(labels):
+        targets[i, label] = 1
+    targets = tf.convert_to_tensor(targets)
+    targets = tf.cast(targets, tf.float32)
+    return targets
+
+
+
 def loss(probabilities,labels):
     return tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, probabilities, axis=-1))
 
@@ -125,6 +148,11 @@ def test(model, test_inputs, test_labels):
     return np.exp(acc)
 
 def trainTest():
+   #  self.lang_embed = make_encoder('bert')
+   #  self.vec_dim = 256
+   #  self.lang_encoder = Sequential()
+   #  self.lang_encoder.add(self.lang_embed, tf.keras.layers.Dense(vec_dim, input_shape=(self.lang_embed.out_dim,), activation=None))
+    
     x, y, z = getTrain()
     trainData = x
     trainLab = y
@@ -132,10 +160,11 @@ def trainTest():
     print(x[0].get_shape().as_list())
     x, y, z = getTest()
     testData = x
-    testLab = y
+    testLab = label_encoder_pass('lstm', y)
     #first need to reshape all elements in x so that theyre the same size (train has 332X436, and 300X400) (test has 510X413)
     print(x[0].get_shape().as_list())
     model = VAE(300 * 400)
+
     train(model,trainData, trainLab)
     print(test(model,testData, testLab))
 
